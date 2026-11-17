@@ -9,7 +9,7 @@ Verified on 2026-11-17 using dedicated Android 9/API 28 and Android 16/API 36 em
 
 Tests require explicit user-entered HTTP/HTTPS endpoints and cover encrypted-token/checkpoint preservation from the published 1.1.0 APK, plus the earlier 1.0.0 schema migration. Both platform runs passed -reitti-upgrade-verify.log and -upgrade-verify.log checks. All synthetic network requests use a reserved example hostname and emulator-local proxy. A source and decompressed-APK scan found no removed-server reference. Privately saved phone settings are retained across the signed upgrade.
 
-The privacy cleanup includes source, documentation, tests, reachable published Git history, release notes and affected release assets. History recovery data is kept in ignored private local storage. The replacement APK and public source/archive assets are scanned for the removed server reference before publication.
+The privacy cleanup covers source, documentation, tests, reachable published Git history, release notes and affected release assets. Tracked files, all objects reachable from current Git refs and the decompressed replacement APK pass the address scan. The affected earlier APK URL returns HTTP 404, and its release has zero downloadable assets and sanitized notes. History recovery data is kept in ignored private local storage.
 
 ---
 

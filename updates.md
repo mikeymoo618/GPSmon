@@ -1,5 +1,11 @@
 # Updates
 
+## 2026-11-17 — 1.1.1/build 6 repository cleanup
+
+- Sanitized affected published branch/tag history and incorporated the README privacy edit.
+- Withdrew the affected 1.1.0 APK, checksum and update metadata, and replaced its release notes with a withdrawal notice.
+- Verified current tracked files, reachable history and the decompressed replacement APK contain no removed-server reference. The signing identity is preserved.
+
 ## 2026-11-17 — 1.1.1/build 6 replacement verified
 
 - Passed twenty-group Android 9 and Android 16 suites with a blank initial server URL and user-entered HTTP/HTTPS configuration.
