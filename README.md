@@ -20,7 +20,7 @@ Coordinates and notes are stored in the app's private SQLite database. Android's
 
 ## Reitti uploads
 
-Open Reitti upload settings from the Trips section. The default endpoint is http://server.example.invalid:8092/api/v1/ingest/gpslogger. Enter a GPSLogger integration token from Reitti Settings → Integrations, with its device assignment, enable automatic uploads and save. Enabling uploads queues all completed local trips. Each trip starts uploading after it ends, using an available internet connection. Android can defer background jobs.
+Open Reitti upload settings from the Trips section. . Enter a GPSLogger integration token from Reitti Settings → Integrations, with its device assignment, enable automatic uploads and save. Enabling uploads queues all completed local trips. Each trip starts uploading after it ends, using an available internet connection. Android can defer background jobs.
 
 Points are posted chronologically with their original recording timestamps. Successful points are checkpointed privately. Interrupted requests are retried with the same timestamp so Reitti can deduplicate. Reitti reconstructs its journeys from the points. GPSmon's addresses and editable notes are available locally and in GPX exports.
 
