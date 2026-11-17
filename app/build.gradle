@@ -1,0 +1,40 @@
+plugins { id 'com.android.application' }
+def signing = new Properties()
+def signingFile = rootProject.file('.local-signing/signing.properties')
+if (signingFile.exists()) signingFile.withInputStream { signing.load(it) }
+android {
+    namespace 'com.gpsmon.app'
+    compileSdk 36
+    buildToolsVersion '36.0.0'
+    defaultConfig {
+        applicationId 'com.gpsmon.app'
+        minSdk 28
+        targetSdk 36
+        versionCode 2
+        versionName '1.0.0'
+        testInstrumentationRunner 'com.gpsmon.app.TripTestRunner'
+        if (project.hasProperty('appVersionCode')) versionCode project.property('appVersionCode').toInteger()
+        if (project.hasProperty('appVersionName')) versionName project.property('appVersionName')
+    }
+    signingConfigs {
+        localRelease {
+            if (signingFile.exists()) {
+                storeFile rootProject.file('.local-signing/gpsmon.p12')
+                storePassword signing.getProperty('storePassword')
+                keyAlias 'gpsmon'
+                keyPassword signing.getProperty('storePassword')
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            if (signingFile.exists()) signingConfig signingConfigs.localRelease
+        }
+    }
+    testBuildType 'release'
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
