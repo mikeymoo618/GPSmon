@@ -1,3 +1,18 @@
+# GPSmon 1.1.1/build 6 verification
+
+Verified on 2026-11-17 using dedicated Android 9/API 28 and Android 16/API 36 emulators. Both passed all twenty groups in artifacts/privacy28-final-instrumentation.log and artifacts/privacy36-final-instrumentation.log, including blank-default and explicit-URL checks. Both actual-emulator reboot checks passed. Test-owned emulators were shut down.
+
+- Package com.gpsmon.app, version 1.1.1/build 6, minimum SDK 28, compile/target SDK 36.
+- APK artifacts/GPSmon-1.1.1.apk is 90,072 bytes. SHA-256 is 51a9578977fd97117f260584bc32cd26d11439cd5f8f907e9eefae98bdddabed.
+- Build/lint passed with zero errors and thirteen retained warnings in artifacts/build-1.1.1-attempt1.log. The additional warning identifies HTTP support for user-configured endpoints. Harness build passed in artifacts/build-1.1.1-tests-final.log. Its earlier checked-exception compilation log is retained.
+- APK v2 signature verification passed with the preserved certificate SHA-256 3d58791e1474b86f361d248ea1598cb43bbfdbdedf93595a311fae3dc17a04d8.
+
+Tests require explicit user-entered HTTP/HTTPS endpoints and cover encrypted-token/checkpoint preservation from the published 1.1.0 APK, plus the earlier 1.0.0 schema migration. Both platform runs passed -reitti-upgrade-verify.log and -upgrade-verify.log checks. All synthetic network requests use a reserved example hostname and emulator-local proxy. A source and decompressed-APK scan found no removed-server reference. Privately saved phone settings are retained across the signed upgrade.
+
+The privacy cleanup includes source, documentation, tests, reachable published Git history, release notes and affected release assets. History recovery data is kept in ignored private local storage. The replacement APK and public source/archive assets are scanned for the removed server reference before publication.
+
+---
+
 # GPSmon 1.1.0/build 5 verification
 
 Verified on 2026-11-17 with dedicated Android 9/API 28 and Android 16/API 36 emulators. Both passed all twenty groups in artifacts/reitti28-build5-instrumentation.log and artifacts/reitti36-build5-instrumentation.log. Both signed-upgrade and actual-emulator reboot checks passed. Test-owned emulators were shut down.
@@ -7,7 +22,7 @@ Verified on 2026-11-17 with dedicated Android 9/API 28 and Android 16/API 36 emu
 - Preserved certificate SHA-256 is 3d58791e1474b86f361d248ea1598cb43bbfdbdedf93595a311fae3dc17a04d8. APK v2 signature verification passed in artifacts/signature-1.1.0-build5.txt.
 - Build/lint passed in artifacts/build-1.1.0-build5.log with zero errors and twelve retained warnings. Harness build passed in artifacts/build-1.1.0-tests-build5.log. Warnings cover deliberate synchronous settings persistence, battery-exemption guidance and English-only UI strings.
 
-The release suite adds token encryption, destination scope, HTTP host restrictions, JSON types/units, recording-time battery capture, real HTTP POSTs through a process-local loopback proxy, partial progress, database reopen, authentication errors, redirect rejection, lost-response replay, cancellation, a real persisted Android network job and settings-screen controls. The proxy routes synthetic server.example.invalid requests to a local emulator socket, so test locations and dummy tokens stay off the public Reitti server.
+The release suite adds token encryption, destination scope, HTTP host restrictions, JSON types/units, recording-time battery capture, real HTTP POSTs through a process-local loopback proxy, partial progress, database reopen, authentication errors, redirect rejection, lost-response replay, cancellation, a real persisted Android network job and settings-screen controls. The proxy routes synthetic reitti.example.invalid requests to a local emulator socket, so test locations and dummy tokens stay off the public Reitti server.
 
 The signed upgrade fixture is the actual published GPSmon 1.0.0/build 2 APK. The current test harness seeds schema-1 records through that APK, installs 1.1.0/build 5 over it and verifies retained notes, addresses, points and car selections. The migrated point's battery remains unknown. Existing recording, trip, notes, GPX, service recovery and real-emulator reboot checks run with the integration suite.
 

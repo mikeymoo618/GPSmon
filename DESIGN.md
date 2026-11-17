@@ -1,4 +1,4 @@
-# GPSmon 1.1.0 design
+# GPSmon 1.1.1 design
 
 ## Approved scope
 
@@ -14,7 +14,7 @@ Each successful HTTP response advances a durable timestamp checkpoint. A lost re
 
 Recoverable network failures, HTTP 408/429 and server 5xx request Android's exponential retry backoff. Authentication and other permanent HTTP failures show Needs attention. Disabled settings and Android job cancellation stop subsequent requests. A running connection has bounded connect/read timeouts and is disconnected on job cancellation. Job completion rechecks the durable queue to cover trips finishing during an upload. Android may defer work for network, quota or battery restrictions. Job execution performs no GPS collection.
 
-Tokens are AES-GCM encrypted with a dedicated Android Keystore key. Backups remain disabled. Settings can recover from unreadable encrypted credentials by accepting a replacement token. URLs reject embedded credentials and query strings. HTTP is allowed only for server.example.invalid by Android's network security configuration. Other destinations require HTTPS. Redirect following is disabled so the token is sent solely to the configured endpoint. Diagnostics contain generic failure details and HTTP codes, excluding token values and server bodies.
+Tokens are AES-GCM encrypted with a dedicated Android Keystore key. Backups remain disabled. Settings can recover from unreadable encrypted credentials by accepting a replacement token. URLs reject embedded credentials and query strings. New installations have a blank server URL. Disabled settings accept a blank URL, while enabling uploads requires an explicitly entered HTTP or HTTPS endpoint and a token. Android permits HTTP for these user-entered endpoints. Redirect following is disabled so the token is sent solely to the configured endpoint. Diagnostics contain generic failure details and HTTP codes, excluding token values and server bodies.
 
 Source references include Reitti's GPSLoggerIngestionApiController and OwntracksLocationRequest under https://github.com/dedicatedcode/reitti and https://www.dedicatedcode.com/projects/reitti/latest/api/ingest/ . Tests use a process-local loopback proxy for the configured hostname so synthetic requests stay on the emulator.
 

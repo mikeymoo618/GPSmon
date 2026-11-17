@@ -29,6 +29,8 @@ public final class ReittiActivity extends Activity {
         endpoint = new EditText(this);
         endpoint.setTextColor(Ui.INK);
         endpoint.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        endpoint.setHintTextColor(Ui.MUTED);
+        endpoint.setHint("Enter your Reitti ingestion URL");
         endpoint.setText(ReittiSettings.preferences(this).getString("endpoint", ReittiSettings.DEFAULT_URL));
         root.addView(endpoint);
         Ui.text(this, root, "Integration token", 15, Ui.INK);
@@ -45,7 +47,7 @@ public final class ReittiActivity extends Activity {
         enabled.setTextColor(Ui.INK);
         enabled.setChecked(ReittiSettings.enabled(this));
         root.addView(enabled);
-        Ui.text(this, root, "The token is encrypted in phone-local storage. The supplied HTTP server receives your token and coordinates without transport encryption. HTTPS is supported when your server provides it.", 14, Ui.MUTED);
+        Ui.text(this, root, "The token is encrypted in phone-local storage. HTTP connections send your token and coordinates without transport encryption. HTTPS uses the server's certificate.", 14, Ui.MUTED);
         Ui.button(this, root, "Save connection", view -> save());
         Ui.button(this, root, "Retry uploads now", view -> {
             if (!ReittiSettings.enabled(this)) { Toast.makeText(this, "Save and enable the connection first.", Toast.LENGTH_LONG).show(); return; }

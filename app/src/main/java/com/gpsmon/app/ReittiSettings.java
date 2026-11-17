@@ -17,7 +17,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.GCMParameterSpec;
 
 final class ReittiSettings {
-    static final String DEFAULT_URL = "http://server.example.invalid:8092/api/v1/ingest/gpslogger";
+    static final String DEFAULT_URL = "";
     private static final String KEY = "GPSmon.reitti.v1";
     private ReittiSettings() {}
     static final class Config {
@@ -25,17 +25,21 @@ final class ReittiSettings {
         final boolean enabled;
         Config(String endpoint, String token, String target, boolean enabled) throws IOException {
             try {
-                URI uri = new URI(endpoint.trim());
-                if (!("https".equalsIgnoreCase(uri.getScheme()) || "http".equalsIgnoreCase(uri.getScheme()))
-                        || uri.getHost() == null || uri.getUserInfo() != null || uri.getFragment() != null
-                        || uri.getRawQuery() != null || uri.getPort() == 0 || uri.getPort() > 65535
-                        || uri.getPath().isEmpty()) throw new IOException("Enter the full HTTP or HTTPS ingestion URL without credentials or a query string.");
-                if ("http".equalsIgnoreCase(uri.getScheme()) && !"server.example.invalid".equalsIgnoreCase(uri.getHost()))
-                    throw new IOException("HTTP is enabled for server.example.invalid. Use HTTPS for another server.");
+                String normalized = endpoint.trim();
+                if (normalized.isEmpty()) {
+                    if (enabled) throw new IOException("Enter your Reitti ingestion URL before enabling uploads.");
+                } else {
+                    URI uri = new URI(normalized);
+                    if (!("https".equalsIgnoreCase(uri.getScheme()) || "http".equalsIgnoreCase(uri.getScheme()))
+                            || uri.getHost() == null || uri.getUserInfo() != null || uri.getFragment() != null
+                            || uri.getRawQuery() != null || uri.getPort() == 0 || uri.getPort() > 65535
+                            || uri.getPath().isEmpty()) throw new IOException("Enter the full HTTP or HTTPS ingestion URL without credentials or a query string.");
+                    normalized = uri.toASCIIString();
+                }
                 if (!token.matches("[!-~]*"))
                     throw new IOException("The token must contain visible ASCII characters without spaces or line breaks.");
                 if (enabled && token.isBlank()) throw new IOException("Enter your Reitti integration token.");
-                this.endpoint = uri.toASCIIString();
+                this.endpoint = normalized;
                 this.token = token;
                 this.target = target;
                 this.enabled = enabled;

@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 final class ReittiTests {
+    static final String ENDPOINT = "http://reitti.example.invalid/api/v1/ingest/gpslogger";
     private final Instrumentation instrumentation;
     private final Context app;
     private final Consumer<String> passed;
@@ -40,37 +41,39 @@ final class ReittiTests {
         job();
     }
     private void settings() throws Exception {
-        check(android.security.NetworkSecurityPolicy.getInstance().isCleartextTrafficPermitted("server.example.invalid"), "Approved HTTP host allowed");
-        check(!android.security.NetworkSecurityPolicy.getInstance().isCleartextTrafficPermitted("example.com"), "Other HTTP hosts blocked");
-        ReittiSettings.save(app, ReittiSettings.DEFAULT_URL, "synthetic-private-token", false);
+        check(ReittiSettings.load(app).endpoint.isEmpty(), "Fresh installation has no default server URL");
+        check(android.security.NetworkSecurityPolicy.getInstance().isCleartextTrafficPermitted("reitti.example.invalid"), "User-configured HTTP supported");
+        check(new ReittiSettings.Config("", "", "", false).endpoint.isEmpty(), "Blank disabled connection is valid");
+        ReittiSettings.save(app, ENDPOINT, "synthetic-private-token", false);
         String stored = ReittiSettings.preferences(app).getString("token", "");
         check(!stored.contains("synthetic-private-token"), "Token encrypted at rest");
         check(ReittiSettings.load(app).token.equals("synthetic-private-token"), "Keystore decrypt round-trip");
         String target = ReittiSettings.target(app);
-        ReittiSettings.save(app, ReittiSettings.DEFAULT_URL, "", false);
+        ReittiSettings.save(app, ENDPOINT, "", false);
         check(ReittiSettings.target(app).equals(target), "Unchanged destination preserves checkpoints");
-        ReittiSettings.save(app, ReittiSettings.DEFAULT_URL, "replacement-synthetic-token", false);
+        ReittiSettings.save(app, ENDPOINT, "replacement-synthetic-token", false);
         check(!ReittiSettings.target(app).equals(target), "Changed token scopes new checkpoints");
         boolean rejected = false;
-        try { new ReittiSettings.Config("http://example.com/api", "token", "x", true); }
+        try { new ReittiSettings.Config("", "token", "x", true); }
         catch (IOException expected) { rejected = true; }
-        check(rejected, "Unapproved HTTP host rejected");
+        check(rejected, "Uploads require a user-entered URL");
+        check(new ReittiSettings.Config("http://another.example.invalid/api", "token", "x", true).enabled, "User-entered HTTP host accepted");
         rejected = false;
-        try { new ReittiSettings.Config(ReittiSettings.DEFAULT_URL, "token\r\nInjected: x", "x", true); }
+        try { new ReittiSettings.Config(ENDPOINT, "token\r\nInjected: x", "x", true); }
         catch (IOException expected) { rejected = true; }
         check(rejected, "Header injection rejected");
         rejected = false;
-        try { new ReittiSettings.Config(ReittiSettings.DEFAULT_URL, "token\u0100", "x", true); }
+        try { new ReittiSettings.Config(ENDPOINT, "token\u0100", "x", true); }
         catch (IOException expected) { rejected = true; }
         check(rejected, "Non-ASCII header value rejected before HTTP library diagnostics");
         ReittiSettings.preferences(app).edit().putString("token", "unreadable").commit();
-        ReittiSettings.save(app, ReittiSettings.DEFAULT_URL, "recovered-synthetic-token", false);
+        ReittiSettings.save(app, ENDPOINT, "recovered-synthetic-token", false);
         check(ReittiSettings.load(app).token.equals("recovered-synthetic-token"), "Invalid secret can be replaced");
-        passed.accept("Reitti token encryption, destination scope and host restrictions");
+        passed.accept("blank default, explicit server URL, token encryption and destination scope");
     }
     private void queue() throws Exception {
         String database = "reitti-queue-" + System.currentTimeMillis() + ".db";
-        ReittiSettings.Config config = new ReittiSettings.Config(ReittiSettings.DEFAULT_URL, "fixture-token", "fixture-target", true);
+        ReittiSettings.Config config = new ReittiSettings.Config(ENDPOINT, "fixture-token", "fixture-target", true);
         long start = System.currentTimeMillis() - 100_000;
         long id;
         try (TripStore store = new TripStore(app, database)) {
@@ -145,12 +148,12 @@ final class ReittiTests {
         try (Fixture fixture = new Fixture()) {
             ProxySelector.setDefault(new ProxySelector() {
                 @Override public List<Proxy> select(URI uri) {
-                    return "server.example.invalid".equals(uri.getHost()) ? Collections.singletonList(fixture.proxy())
+                    return "reitti.example.invalid".equals(uri.getHost()) ? Collections.singletonList(fixture.proxy())
                             : original == null ? Collections.singletonList(Proxy.NO_PROXY) : original.select(uri);
                 }
                 @Override public void connectFailed(URI uri, java.net.SocketAddress address, IOException error) { }
             });
-            ReittiSettings.save(app, ReittiSettings.DEFAULT_URL, "scheduled-fixture-token", true);
+            ReittiSettings.save(app, ENDPOINT, "scheduled-fixture-token", true);
             String target = ReittiSettings.target(app);
             UploadScheduler.enqueue(app, true);
             try (ParcelFileDescriptor descriptor = instrumentation.getUiAutomation().executeShellCommand("cmd jobscheduler run -f com.gpsmon.app 450");
@@ -168,7 +171,7 @@ final class ReittiTests {
             check(!fixture.payloads.isEmpty(), "Real Android JobService sent HTTP requests");
             passed.accept("persisted Android network job drains completed trips through real HTTP");
         } finally {
-            ReittiSettings.save(app, ReittiSettings.DEFAULT_URL, "", false);
+            ReittiSettings.save(app, ENDPOINT, "", false);
             UploadScheduler.enqueue(app, false);
             long until = SystemClock.elapsedRealtime() + 25_000;
             while (UploadJob.running() && SystemClock.elapsedRealtime() < until) SystemClock.sleep(100);

@@ -69,7 +69,7 @@ public final class TripTestRunner extends Instrumentation {
             runOnMainSync(() -> button(resumed.getWindow().getDecorView(), "Reitti upload settings").performClick());
             await(() -> resumed instanceof ReittiActivity, 10_000, "Reitti settings screen resumed");
             runOnMainSync(() -> {
-                edit(resumed.getWindow().getDecorView()).setText(ReittiSettings.DEFAULT_URL);
+                edit(resumed.getWindow().getDecorView()).setText(ReittiTests.ENDPOINT);
                 password(resumed.getWindow().getDecorView()).setText("ui-private-fixture-token");
                 button(resumed.getWindow().getDecorView(), "Save connection").performClick();
             });
@@ -125,7 +125,7 @@ public final class TripTestRunner extends Instrumentation {
         }
         return null;
     }
-    private void upgrade() {
+    private void upgrade() throws java.io.IOException {
         try (TripStore store = new TripStore(app)) {
             if ("seed".equals(mode)) {
                 long now = System.currentTimeMillis();
@@ -143,6 +143,23 @@ public final class TripTestRunner extends Instrumentation {
                 check(trip.origin.equals("Upgrade origin") && store.points(id).size() == 1, "Address and GPS point survived upgrade");
                 check(Settings.devices(app).contains("02:00:00:00:56:78"), "Car selection survived upgrade");
                 check(store.points(id).get(0).battery == null, "Legacy point migrated with unknown battery");
+            } else if ("reittiSeed".equals(mode)) {
+                ReittiSettings.save(app, "https://reitti.example.invalid/api/v1/ingest/gpslogger", "private-upgrade-token", false);
+                long now = System.currentTimeMillis();
+                TripStore.Trip trip = store.start("Settings upgrade fixture", now);
+                store.add(trip.id, point(now, -36.85, 174.76, 5));
+                store.notes(trip.id, "Reitti upgrade preserved");
+                store.finish(trip.id, now + 1000, "Upgrade fixture");
+                store.uploadProgress(trip.id, ReittiSettings.target(app), now, "Uploaded", "");
+                Settings.preferences(app).edit().putLong("reitti_upgrade_trip", trip.id)
+                        .putString("reitti_upgrade_target", ReittiSettings.target(app)).commit();
+            } else if ("reittiVerify".equals(mode)) {
+                long id = Settings.preferences(app).getLong("reitti_upgrade_trip", -1);
+                check(ReittiSettings.load(app).endpoint.equals("https://reitti.example.invalid/api/v1/ingest/gpslogger"), "Private configured endpoint preserved");
+                check(ReittiSettings.load(app).token.equals("private-upgrade-token"), "Encrypted token preserved");
+                check(ReittiSettings.target(app).equals(Settings.preferences(app).getString("reitti_upgrade_target", "")), "Destination identity preserved");
+                check(store.upload(id, ReittiSettings.target(app)).sent == 1, "Upload checkpoint preserved");
+                check(store.get(id).notes.equals("Reitti upgrade preserved"), "Trip notes preserved");
             } else if ("bootseed".equals(mode)) {
                 Settings.select(app, "02:00:00:00:56:78", true);
                 Settings.enabled(app, true);

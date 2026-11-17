@@ -1,5 +1,19 @@
 # Updates
 
+## 2026-11-17 — 1.1.1/build 6 replacement verified
+
+- Passed twenty-group Android 9 and Android 16 suites with a blank initial server URL and user-entered HTTP/HTTPS configuration.
+- Verified 1.1.0 encrypted connection settings and upload checkpoints survive signed upgrades. Earlier 1.0.0 trip/schema migration and real-emulator reboot checks also passed on both platforms.
+- Build/lint passed with zero errors and thirteen retained warnings. Confirmed the preserved signing identity, package/SDK metadata and absence of the removed server reference in tracked files and the decompressed APK.
+- Public history and release cleanup is being completed under the user's explicit approval.
+
+## 2026-11-17 — 1.1.1/build 6 server-reference cleanup
+
+- Removed the server-specific default and documentation references. New installations start with a blank ingestion URL and require explicit connection setup before enabling uploads.
+- Support user-entered HTTP/HTTPS endpoints. Privately saved phone settings and upload checkpoints are retained across upgrades.
+- Use a reserved example hostname exclusively in protocol tests. Added blank-default, URL-required and upgrade-preservation regression checks.
+- The user approved sanitizing affected published Git history and withdrawing affected release assets. Replacement build verification is in progress.
+
 ## 2026-11-17 — 1.1.0/build 5 verification completed
 
 - Passed twenty-group release suites on Android 9 and Android 16, including real HTTP local fixtures, partial progress, server/authentication failures, lost responses, cancellation, the persisted Android network job and actual settings controls.
@@ -20,7 +34,7 @@
 
 ## 2026-11-17 — 1.1.0/build 3 Reitti uploads
 
-- Added enabled-by-user Reitti JSON settings, Android Keystore-encrypted token storage and HTTP allowance scoped to server.example.invalid.
+- Added enabled-by-user Reitti JSON settings, Android Keystore-encrypted token storage and configurable server transport.
 - Added chronological post-trip uploads with original Unix timestamps, accuracy, altitude, speed, and battery/charging state captured with new points.
 - Migrated existing trips and points without rebuilding the database. Legacy battery values remain unknown.
 - Added durable destination-scoped point checkpoints, retry/backoff, cancellation, status and manual retry. Local trips and notes are retained.

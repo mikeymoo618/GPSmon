@@ -49,7 +49,7 @@ final class ReittiClient {
             connection.setRequestProperty("Content-Type", "application/json");
             connection.setRequestProperty("Accept", "application/json");
             connection.setRequestProperty("X-API-TOKEN", config.token);
-            connection.setRequestProperty("User-Agent", "GPSmon/1.1.0");
+            connection.setRequestProperty("User-Agent", "GPSmon/1.1.1");
             byte[] body;
             try { body = payload(point).toString().getBytes(StandardCharsets.UTF_8); }
             catch (org.json.JSONException error) { throw new UploadFailure("This GPS point could not be encoded.", false); }

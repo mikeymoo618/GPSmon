@@ -45,18 +45,29 @@ try {
     $logProcess = Start-Process -FilePath $adb -ArgumentList @('-s',$serial,'logcat','-v','threadtime') -WindowStyle Hidden -PassThru `
         -RedirectStandardOutput ('artifacts/' + $RunName + '-logcat.log') -RedirectStandardError ('artifacts/' + $RunName + '-logcat-error.log')
     $env:GPSMON_KEYSTORE_PASSWORD = (Get-Content .local-signing/signing.properties | Where-Object { $_.StartsWith('storePassword=') }).Substring(14)
-    $testApk = 'artifacts/GPSmon-test-1.1.0-api' + $Api + '.apk'
+    $testApk = 'artifacts/GPSmon-test-1.1.1-api' + $Api + '.apk'
     & $java -jar (Join-Path $sdk 'build-tools\36.0.0\lib\apksigner.jar') sign --ks .local-signing/gpsmon.p12 --ks-key-alias gpsmon --ks-pass env:GPSMON_KEYSTORE_PASSWORD --out $testApk app/build/outputs/apk/androidTest/release/app-release-androidTest.apk
     if ($LASTEXITCODE -ne 0) { throw 'Test harness signing failed' }
     # Only synthetic GPSmon test data in this dedicated AVD is replaced for the older-version fixture.
     & $adb -s $serial uninstall com.gpsmon.app > ('artifacts/' + $RunName + '-fixture-reset.log') 2>&1
+    & $adb -s $serial install -r artifacts/GPSmon-1.1.0.apk
+    if ($LASTEXITCODE -ne 0) { throw 'Reitti upgrade fixture installation failed' }
+    & $adb -s $serial install -r $testApk
+    if ($LASTEXITCODE -ne 0) { throw 'Reitti upgrade harness installation failed' }
+    & $adb -s $serial shell am instrument -w -e mode reittiSeed com.gpsmon.app.test/com.gpsmon.app.TripTestRunner > ('artifacts/' + $RunName + '-reitti-upgrade-seed.log')
+    if ((Get-Content ('artifacts/' + $RunName + '-reitti-upgrade-seed.log') -Raw) -notmatch 'PASS: signed upgrade reittiSeed') { throw 'Reitti upgrade seeding failed' }
+    & $adb -s $serial install -r artifacts/GPSmon-1.1.1.apk
+    if ($LASTEXITCODE -ne 0) { throw 'Reitti upgrade installation failed' }
+    & $adb -s $serial shell am instrument -w -e mode reittiVerify com.gpsmon.app.test/com.gpsmon.app.TripTestRunner > ('artifacts/' + $RunName + '-reitti-upgrade-verify.log')
+    if ((Get-Content ('artifacts/' + $RunName + '-reitti-upgrade-verify.log') -Raw) -notmatch 'PASS: signed upgrade reittiVerify') { throw 'Reitti settings/checkpoint preservation failed' }
+    & $adb -s $serial uninstall com.gpsmon.app > ('artifacts/' + $RunName + '-legacy-fixture-reset.log') 2>&1
     & $adb -s $serial install -r artifacts/GPSmon-1.0.0.apk
     if ($LASTEXITCODE -ne 0) { throw 'Release installation failed' }
     & $adb -s $serial install -r $testApk
     if ($LASTEXITCODE -ne 0) { throw 'Harness installation failed' }
     & $adb -s $serial shell am instrument -w -e mode seed com.gpsmon.app.test/com.gpsmon.app.TripTestRunner > ('artifacts/' + $RunName + '-upgrade-seed.log')
     if ((Get-Content ('artifacts/' + $RunName + '-upgrade-seed.log') -Raw) -notmatch 'PASS: signed upgrade seed') { throw 'Upgrade fixture seeding failed' }
-    & $adb -s $serial install -r artifacts/GPSmon-1.1.0.apk
+    & $adb -s $serial install -r artifacts/GPSmon-1.1.1.apk
     if ($LASTEXITCODE -ne 0) { throw 'Signed release upgrade failed' }
     & $adb -s $serial shell am instrument -w -e mode verify com.gpsmon.app.test/com.gpsmon.app.TripTestRunner > ('artifacts/' + $RunName + '-upgrade-verify.log')
     if ((Get-Content ('artifacts/' + $RunName + '-upgrade-verify.log') -Raw) -notmatch 'PASS: signed upgrade verify') { throw 'Upgrade preservation failed' }

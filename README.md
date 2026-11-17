@@ -1,6 +1,6 @@
 # GPSmon
 
-Automatic Bluetooth-triggered Android trip logging. Requires Android 9 or newer. Version 1.1.0, build 5, package com.gpsmon.app, compile/target SDK 36.
+Automatic Bluetooth-triggered Android trip logging. Requires Android 9 or newer. Version 1.1.1, build 6, package com.gpsmon.app, compile/target SDK 36.
 
 ## Setup
 
@@ -20,13 +20,13 @@ Coordinates and notes are stored in the app's private SQLite database. Android's
 
 ## Reitti uploads
 
-Open Reitti upload settings from the Trips section. The default endpoint is http://server.example.invalid:8092/api/v1/ingest/gpslogger. Enter a GPSLogger integration token from Reitti Settings → Integrations, with its device assignment, enable automatic uploads and save. Enabling uploads queues all completed local trips. Each trip starts uploading after it ends, using an available internet connection. Android can defer background jobs.
+Open Reitti upload settings from the Trips section. Enter your server's full GPSLogger JSON ingestion URL and a GPSLogger integration token from Reitti Settings → Integrations, with its device assignment. The URL field starts blank. Enable automatic uploads and save. Enabling uploads queues all completed local trips. Each trip starts uploading after it ends, using an available internet connection. Android can defer background jobs.
 
 Points are posted chronologically with their original recording timestamps. Successful points are checkpointed privately. Interrupted requests are retried with the same timestamp so Reitti can deduplicate. Reitti reconstructs its journeys from the points. GPSmon's addresses and editable notes are available locally and in GPX exports.
 
 Trip cards and details show sent/total point counts, queued/paused/uploaded status and errors. Retry upload or Retry uploads now requests another attempt. Disabling uploads retains pending data. Changing the endpoint or token starts a separate upload destination and queues completed history for that destination. Saving the same endpoint and token preserves acknowledged points. Leave the token field blank to retain the saved secret.
 
-The token is encrypted using Android Keystore and excluded from Android backup. The supplied HTTP URL sends coordinates and token without transport encryption. Android allows cleartext for server.example.invalid only. HTTPS endpoints use normal certificate validation. Redirects are rejected. Tokens are sent in X-API-TOKEN and are excluded from application diagnostics. New points include recording-time battery and charging state. Upgraded historical points omit unavailable battery data.
+The token is encrypted using Android Keystore and excluded from Android backup. User-entered HTTP endpoints send coordinates and token without transport encryption. HTTPS endpoints use normal certificate validation. Redirects are rejected. Tokens are sent in X-API-TOKEN and are excluded from application diagnostics. New points include recording-time battery and charging state. Upgraded historical points omit unavailable battery data.
 
 ## Build and signing
 
