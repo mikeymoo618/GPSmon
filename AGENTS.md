@@ -2,6 +2,7 @@
 
 - Follow parent instructions and communicate briefly in English.
 - Approved Step 1 is automatic selected-car Bluetooth trip logging, local history, distance, duration, endpoint addresses and editable notes. GPS requests use a ten-second interval. A sixty-second reconnection window preserves brief dropouts. Reitti integration belongs to Step 2.
+- Approved Step 2 uploads completed trips point-by-point as JSON to the configurable Reitti GPSLogger ingestion endpoint. Store tokens with Android Keystore encryption, retain local trips and durable per-destination checkpoints, retry recoverable failures and expose upload status/manual retry. Cleartext HTTP is scoped to server.example.invalid. Preserve original point timestamps for server deduplication.
 - Use Android 9/API 28 through Android 16/API 36. Preserve the GPSmon package and private signing identity across upgrades.
 - Read the source before edits, obtain approval before substantive new scope, increment release versions and maintain updates.md.
 - Keep signing material, credentials, local SDK settings, test runtimes, recordings and generated artifacts out of Git.

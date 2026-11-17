@@ -1,5 +1,31 @@
 # Updates
 
+## 2026-11-17 — 1.1.0/build 5 verification completed
+
+- Passed twenty-group release suites on Android 9 and Android 16, including real HTTP local fixtures, partial progress, server/authentication failures, lost responses, cancellation, the persisted Android network job and actual settings controls.
+- Verified in-place migration from the published 1.0.0/build 2 APK preserves trip points, notes, addresses and car selections. Legacy battery information remains unknown.
+- Actual emulator reboots restored monitoring on both platforms. Idle diagnostics show no GPSmon location listener. Both emulators were shut down after testing.
+- Build/lint passed with zero errors and twelve retained warnings. Package metadata, SHA-256 and preserved signing identity were verified. Production-server authentication and physical-phone validation require the user's locally entered token and phone checks.
+
+## 2026-11-17 — 1.1.0/build 5 release candidate
+
+- Show the timestamp of an upload problem alongside the retained error message and progress.
+- Removed a redundant in-memory trip-ID field from upload status. Build 4 passed twenty groups on Android 9 and Android 16. Final candidate verification is in progress.
+
+## 2026-11-17 — 1.1.0/build 4 release candidate
+
+- Validate integration tokens as visible ASCII before passing them to HTTP headers. Accept case-insensitive HTTP/HTTPS schemes.
+- Added checks for recording-time battery capture, invalid header values and actual Reitti settings-screen token entry/save behavior.
+- Build 3 passed nineteen Android 16 groups, including the persisted network job and local HTTP fixtures. Final build 4 verification is in progress.
+
+## 2026-11-17 — 1.1.0/build 3 Reitti uploads
+
+- Added enabled-by-user Reitti JSON settings, Android Keystore-encrypted token storage and HTTP allowance scoped to server.example.invalid.
+- Added chronological post-trip uploads with original Unix timestamps, accuracy, altitude, speed, and battery/charging state captured with new points.
+- Migrated existing trips and points without rebuilding the database. Legacy battery values remain unknown.
+- Added durable destination-scoped point checkpoints, retry/backoff, cancellation, status and manual retry. Local trips and notes are retained.
+- Added local HTTP proxy fixtures for authentication errors, transient failure, lost responses, replay, redirects, database reopen and actual Android network jobs. Verification is in progress.
+
 ## 2026-11-17 — 1.0.0/build 1 initial Step 1 implementation
 
 - Added GPSmon with its own package and private release-signing identity.

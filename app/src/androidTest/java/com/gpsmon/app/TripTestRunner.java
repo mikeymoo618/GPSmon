@@ -47,6 +47,7 @@ public final class TripTestRunner extends Instrumentation {
             }
             storage();
             service();
+            new ReittiTests(this, this::pass).run();
             Intent launch = new Intent(app, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             app.startActivity(launch);
             await(() -> resumed instanceof MainActivity, 10_000, "Main screen resumed");
@@ -65,6 +66,18 @@ public final class TripTestRunner extends Instrumentation {
             runOnMainSync(() -> button(resumed.getWindow().getDecorView(), "Back to trips").performClick());
             await(() -> resumed instanceof MainActivity, 10_000, "Back control returns to trips");
             pass("trip details, editable notes and back navigation through actual controls");
+            runOnMainSync(() -> button(resumed.getWindow().getDecorView(), "Reitti upload settings").performClick());
+            await(() -> resumed instanceof ReittiActivity, 10_000, "Reitti settings screen resumed");
+            runOnMainSync(() -> {
+                edit(resumed.getWindow().getDecorView()).setText(ReittiSettings.DEFAULT_URL);
+                password(resumed.getWindow().getDecorView()).setText("ui-private-fixture-token");
+                button(resumed.getWindow().getDecorView(), "Save connection").performClick();
+            });
+            check(ReittiSettings.load(app).token.equals("ui-private-fixture-token"), "Settings screen saves encrypted token");
+            check(!ReittiSettings.enabled(app), "Settings screen preserves disabled uploads");
+            runOnMainSync(() -> button(resumed.getWindow().getDecorView(), "Back to GPSmon").performClick());
+            await(() -> resumed instanceof MainActivity, 10_000, "Back returns from Reitti settings");
+            pass("Reitti settings saves token through actual password and save controls");
             result.putString("stream", "PASS: GPSmon suite complete, " + groups + " groups\n");
             finish(Activity.RESULT_OK, result);
         } catch (Throwable error) {
@@ -100,6 +113,18 @@ public final class TripTestRunner extends Instrumentation {
         }
         return null;
     }
+    private static android.widget.EditText password(android.view.View root) {
+        if (root instanceof android.widget.EditText && (((android.widget.EditText) root).getInputType()
+                & android.text.InputType.TYPE_MASK_VARIATION) == android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD) return (android.widget.EditText) root;
+        if (root instanceof android.view.ViewGroup) {
+            android.view.ViewGroup group = (android.view.ViewGroup) root;
+            for (int index = 0; index < group.getChildCount(); index++) {
+                android.widget.EditText result = password(group.getChildAt(index));
+                if (result != null) return result;
+            }
+        }
+        return null;
+    }
     private void upgrade() {
         try (TripStore store = new TripStore(app)) {
             if ("seed".equals(mode)) {
@@ -117,6 +142,7 @@ public final class TripTestRunner extends Instrumentation {
                 check(trip != null && trip.notes.equals("Preserved through signed upgrade"), "Trip notes survived upgrade");
                 check(trip.origin.equals("Upgrade origin") && store.points(id).size() == 1, "Address and GPS point survived upgrade");
                 check(Settings.devices(app).contains("02:00:00:00:56:78"), "Car selection survived upgrade");
+                check(store.points(id).get(0).battery == null, "Legacy point migrated with unknown battery");
             } else if ("bootseed".equals(mode)) {
                 Settings.select(app, "02:00:00:00:56:78", true);
                 Settings.enabled(app, true);

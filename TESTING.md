@@ -1,3 +1,24 @@
+# GPSmon 1.1.0/build 5 verification
+
+Verified on 2026-11-17 with dedicated Android 9/API 28 and Android 16/API 36 emulators. Both passed all twenty groups in artifacts/reitti28-build5-instrumentation.log and artifacts/reitti36-build5-instrumentation.log. Both signed-upgrade and actual-emulator reboot checks passed. Test-owned emulators were shut down.
+
+- Package com.gpsmon.app, version 1.1.0/build 5, minimum SDK 28, compile/target SDK 36.
+- Signed APK artifacts/GPSmon-1.1.0.apk is 90,260 bytes. SHA-256 is 5a14cf228b7de2dad28b8ce8f456f19a95bd19745c9557cf956f238430365b15.
+- Preserved certificate SHA-256 is 3d58791e1474b86f361d248ea1598cb43bbfdbdedf93595a311fae3dc17a04d8. APK v2 signature verification passed in artifacts/signature-1.1.0-build5.txt.
+- Build/lint passed in artifacts/build-1.1.0-build5.log with zero errors and twelve retained warnings. Harness build passed in artifacts/build-1.1.0-tests-build5.log. Warnings cover deliberate synchronous settings persistence, battery-exemption guidance and English-only UI strings.
+
+The release suite adds token encryption, destination scope, HTTP host restrictions, JSON types/units, recording-time battery capture, real HTTP POSTs through a process-local loopback proxy, partial progress, database reopen, authentication errors, redirect rejection, lost-response replay, cancellation, a real persisted Android network job and settings-screen controls. The proxy routes synthetic server.example.invalid requests to a local emulator socket, so test locations and dummy tokens stay off the public Reitti server.
+
+The signed upgrade fixture is the actual published GPSmon 1.0.0/build 2 APK. The current test harness seeds schema-1 records through that APK, installs 1.1.0/build 5 over it and verifies retained notes, addresses, points and car selections. The migrated point's battery remains unknown. Existing recording, trip, notes, GPX, service recovery and real-emulator reboot checks run with the integration suite.
+
+An authenticated production-server upload has not been tested because the integration token is entered locally after installation. Server-side processing and physical-phone Bluetooth, address-provider accuracy and battery use require phone validation.
+
+The unauthenticated read-only HEAD probe reached the configured endpoint and received HTTP 302 to /login. It sent no token or locations. This establishes endpoint reachability. The authenticated JSON integration is verified against local protocol fixtures.
+
+Both build-5 runs include -upgrade-seed.log and -upgrade-verify.log evidence using the actual 1.0.0 APK, plus -boot-services.txt and -boot-verify.log evidence. Idle location snapshots contain no GPSmon GPS listener. UI hierarchies and launcher screenshots are retained alongside full logcat and emulator output. Build 3 passed nineteen Android 16 groups. Build 4 passed twenty groups and reboot checks on both platforms before the final timestamped diagnostics update. All intermediate logs remain local.
+
+---
+
 # GPSmon 1.0.0/build 2 verification
 
 ## Release identity

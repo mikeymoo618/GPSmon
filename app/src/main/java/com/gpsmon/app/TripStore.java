@@ -6,6 +6,9 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.location.Location;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.BatteryManager;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -22,6 +25,8 @@ final class TripStore extends SQLiteOpenHelper {
         long time;
         double latitude, longitude, altitude;
         float accuracy, speed;
+        Integer battery;
+        Boolean charging;
         Location location() {
             Location location = new Location("gps");
             location.setTime(time);
@@ -33,8 +38,14 @@ final class TripStore extends SQLiteOpenHelper {
             return location;
         }
     }
+    private final Context context;
+    private final boolean applicationDatabase;
     TripStore(Context context) { this(context, "trips.db"); }
-    TripStore(Context context, String database) { super(context, database, null, 1); }
+    TripStore(Context context, String database) {
+        super(context, database, null, 2);
+        this.context = context.getApplicationContext();
+        applicationDatabase = "trips.db".equals(database);
+    }
     @Override public void onConfigure(SQLiteDatabase db) { db.setForeignKeyConstraintsEnabled(true); }
     @Override public void onCreate(SQLiteDatabase db) {
         db.execSQL("CREATE TABLE trips (id INTEGER PRIMARY KEY, started INTEGER NOT NULL, ended INTEGER, "
@@ -43,11 +54,21 @@ final class TripStore extends SQLiteOpenHelper {
                 + "disconnected INTEGER NOT NULL DEFAULT 0, active INTEGER UNIQUE CHECK(active IS NULL OR active=1))");
         db.execSQL("CREATE TABLE points (id INTEGER PRIMARY KEY, trip INTEGER NOT NULL REFERENCES trips(id), "
                 + "time INTEGER NOT NULL, latitude REAL NOT NULL, longitude REAL NOT NULL, accuracy REAL NOT NULL, "
-                + "altitude REAL NOT NULL, speed REAL NOT NULL, UNIQUE(trip,time))");
+                + "altitude REAL NOT NULL, speed REAL NOT NULL, battery INTEGER, charging INTEGER, UNIQUE(trip,time))");
         db.execSQL("CREATE INDEX points_by_trip ON points(trip,time)");
+        createUploads(db);
     }
     @Override public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        throw new IllegalStateException("Missing database migration");
+        if (oldVersion < 2) {
+            db.execSQL("ALTER TABLE points ADD COLUMN battery INTEGER");
+            db.execSQL("ALTER TABLE points ADD COLUMN charging INTEGER");
+            createUploads(db);
+        }
+    }
+    private static void createUploads(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE uploads (trip INTEGER NOT NULL REFERENCES trips(id), target TEXT NOT NULL, "
+                + "last_time INTEGER NOT NULL DEFAULT -1, state TEXT NOT NULL DEFAULT 'Queued', "
+                + "problem TEXT NOT NULL DEFAULT '', updated INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(trip,target))");
     }
     synchronized Trip active() {
         try (Cursor cursor = getReadableDatabase().rawQuery("SELECT * FROM trips WHERE active=1", null)) {
@@ -97,6 +118,7 @@ final class TripStore extends SQLiteOpenHelper {
         values.put("reason", reason);
         values.put("disconnected", 0);
         getWritableDatabase().update("trips", values, "id=? AND active=1", new String[]{Long.toString(id)});
+        if (applicationDatabase) UploadScheduler.enqueue(context, false);
     }
     synchronized boolean add(long id, Location location) {
         if (!valid(location)) return false;
@@ -124,6 +146,14 @@ final class TripStore extends SQLiteOpenHelper {
             point.put("accuracy", location.getAccuracy());
             point.put("altitude", location.hasAltitude() ? location.getAltitude() : 0);
             point.put("speed", location.hasSpeed() ? location.getSpeed() : 0);
+            Intent battery = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+            if (battery != null) {
+                int level = battery.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+                int scale = battery.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+                if (level >= 0 && scale > 0) point.put("battery", Math.min(100, Math.round(level * 100f / scale)));
+                int status = battery.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+                if (status >= 0) point.put("charging", status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL ? 1 : 0);
+            }
             db.insertOrThrow("points", null, point);
             ContentValues update = new ContentValues();
             update.put("distance", trip.distance + increment);
@@ -183,6 +213,66 @@ final class TripStore extends SQLiteOpenHelper {
         point.accuracy = c.getFloat(c.getColumnIndexOrThrow("accuracy"));
         point.altitude = c.getDouble(c.getColumnIndexOrThrow("altitude"));
         point.speed = c.getFloat(c.getColumnIndexOrThrow("speed"));
+        int battery = c.getColumnIndexOrThrow("battery");
+        if (!c.isNull(battery)) point.battery = c.getInt(battery);
+        int charging = c.getColumnIndexOrThrow("charging");
+        if (!c.isNull(charging)) point.charging = c.getInt(charging) != 0;
         return point;
+    }
+
+    static final class Upload {
+        long lastTime, updated;
+        int sent, total;
+        String state, problem;
+    }
+    synchronized Upload upload(long id, String target) {
+        Upload upload = new Upload();
+        upload.lastTime = -1;
+        upload.state = "Queued";
+        upload.problem = "";
+        try (Cursor c = getReadableDatabase().rawQuery("SELECT * FROM uploads WHERE trip=? AND target=?", new String[]{Long.toString(id), target})) {
+            if (c.moveToFirst()) {
+                upload.lastTime = c.getLong(c.getColumnIndexOrThrow("last_time"));
+                upload.state = c.getString(c.getColumnIndexOrThrow("state"));
+                upload.problem = c.getString(c.getColumnIndexOrThrow("problem"));
+                upload.updated = c.getLong(c.getColumnIndexOrThrow("updated"));
+            }
+        }
+        try (Cursor c = getReadableDatabase().rawQuery("SELECT COUNT(*), COALESCE(SUM(CASE WHEN time<=? THEN 1 ELSE 0 END),0) FROM points WHERE trip=?",
+                new String[]{Long.toString(upload.lastTime), Long.toString(id)})) {
+            c.moveToFirst();
+            upload.total = c.getInt(0);
+            upload.sent = c.getInt(1);
+        }
+        return upload;
+    }
+    synchronized Trip nextUpload(String target) {
+        try (Cursor c = getReadableDatabase().rawQuery("SELECT t.* FROM trips t LEFT JOIN uploads u ON u.trip=t.id AND u.target=? "
+                + "WHERE t.ended IS NOT NULL AND EXISTS(SELECT 1 FROM points p WHERE p.trip=t.id AND p.time>COALESCE(u.last_time,-1)) "
+                + "ORDER BY t.started,t.id LIMIT 1", new String[]{target})) {
+            return c.moveToFirst() ? readTrip(c) : null;
+        }
+    }
+    synchronized List<Point> pendingPoints(long id, long after) {
+        List<Point> result = new ArrayList<>();
+        try (Cursor c = getReadableDatabase().rawQuery("SELECT * FROM points WHERE trip=? AND time>? ORDER BY time LIMIT 128",
+                new String[]{Long.toString(id), Long.toString(after)})) {
+            while (c.moveToNext()) result.add(readPoint(c));
+        }
+        return result;
+    }
+    synchronized void uploadProgress(long id, String target, long lastTime, String state, String problem) {
+        SQLiteDatabase db = getWritableDatabase();
+        db.beginTransaction();
+        try {
+            ContentValues initial = new ContentValues();
+            initial.put("trip", id);
+            initial.put("target", target);
+            db.insertWithOnConflict("uploads", null, initial, SQLiteDatabase.CONFLICT_IGNORE);
+            // Never rewind an acknowledged point during cancellation or a repeated worker callback.
+            db.execSQL("UPDATE uploads SET last_time=MAX(last_time,?),state=?,problem=?,updated=? WHERE trip=? AND target=?",
+                    new Object[]{lastTime, state, problem, System.currentTimeMillis(), id, target});
+            db.setTransactionSuccessful();
+        } finally { db.endTransaction(); }
     }
 }

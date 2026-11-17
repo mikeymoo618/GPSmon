@@ -42,6 +42,7 @@ public final class MainActivity extends Activity {
         super.onResume();
         draw();
         if (com.gpsmon.app.Settings.enabled(this) && com.gpsmon.app.Settings.ready(this)) startService();
+        UploadScheduler.enqueue(this, false);
         handler.post(refresh);
     }
     @Override protected void onPause() { handler.removeCallbacks(refresh); super.onPause(); }
@@ -73,6 +74,7 @@ public final class MainActivity extends Activity {
         Ui.text(this, root, "Waiting mode uses Bluetooth events with GPS off. During trips, GPS is requested every 10 seconds. Android and the car can delay fixes or connection events. Force-stopping GPSmon prevents automatic starts until you reopen it.", 14, Ui.MUTED);
         Ui.text(this, root, "Trip coordinates stay in private phone storage. Android's address lookup provider may receive start/end coordinates to resolve addresses. Unresolved addresses can be retried from trip details.", 14, Ui.MUTED);
         Ui.heading(this, root, "Trips");
+        Ui.button(this, root, "Reitti upload settings", view -> startActivity(new Intent(this, ReittiActivity.class)));
         trips = new LinearLayout(this);
         trips.setOrientation(LinearLayout.VERTICAL);
         root.addView(trips);
@@ -169,7 +171,8 @@ public final class MainActivity extends Activity {
                 + com.gpsmon.app.Settings.preferences(this).getString("last_problem", ""));
         List<TripStore.Trip> all = store.trips();
         StringBuilder fingerprint = new StringBuilder();
-        for (TripStore.Trip trip : all) fingerprint.append(trip.id).append(trip.ended).append(trip.distance).append(trip.origin).append(trip.destination);
+        for (TripStore.Trip trip : all) fingerprint.append(trip.id).append(trip.ended).append(trip.distance).append(trip.origin).append(trip.destination)
+                .append(UploadScheduler.status(this, store, trip));
         if (fingerprint.toString().equals(tripFingerprint) && trips.getChildCount() > 0) return;
         tripFingerprint = fingerprint.toString();
         trips.removeAllViews();
@@ -180,6 +183,7 @@ public final class MainActivity extends Activity {
             Ui.text(this, card, Addresses.label(trip.origin, store.endpoint(trip.id, true)) + "\n→ "
                     + (trip.active() ? "Trip in progress" : Addresses.label(trip.destination, store.endpoint(trip.id, false))), 16, Ui.INK);
             Ui.text(this, card, Ui.stats(trip), 15, Ui.MUTED);
+            Ui.text(this, card, UploadScheduler.status(this, store, trip), 13, Ui.MUTED);
             Ui.button(this, card, "Trip details and notes", view -> startActivity(new Intent(this, TripActivity.class).putExtra("trip", trip.id)));
         }
     }

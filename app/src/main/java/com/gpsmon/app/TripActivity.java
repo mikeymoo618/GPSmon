@@ -22,6 +22,15 @@ public final class TripActivity extends Activity {
     private long tripId;
     private TripStore store;
     private EditText notes;
+    private android.widget.TextView uploadStatus;
+    private final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable refresh = new Runnable() {
+        @Override public void run() {
+            TripStore.Trip trip = store.get(tripId);
+            if (trip != null && uploadStatus != null) uploadStatus.setText(UploadScheduler.status(TripActivity.this, store, trip));
+            handler.postDelayed(this, 2_000);
+        }
+    };
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -38,6 +47,12 @@ public final class TripActivity extends Activity {
         Ui.text(this, root, Ui.date(trip.started), 17, Ui.ACCENT);
         Ui.text(this, root, trip.active() ? "Recording" : "Arrived " + Ui.date(trip.ended), 15, Ui.MUTED);
         Ui.text(this, root, Ui.stats(trip), 22, Ui.INK);
+        uploadStatus = Ui.text(this, root, UploadScheduler.status(this, store, trip), 15, Ui.ACCENT);
+        if (!trip.active()) Ui.button(this, root, "Retry upload", view -> {
+            save();
+            if (ReittiSettings.enabled(this)) UploadScheduler.enqueue(this, true);
+            else startActivity(new Intent(this, ReittiActivity.class));
+        });
         TripStore.Point first = store.endpoint(tripId, true);
         TripStore.Point last = store.endpoint(tripId, false);
         Ui.heading(this, root, "From");
@@ -72,7 +87,8 @@ public final class TripActivity extends Activity {
         });
     }
     private void save() { if (notes != null) store.notes(tripId, notes.getText().toString()); }
-    @Override protected void onPause() { save(); super.onPause(); }
+    @Override protected void onResume() { super.onResume(); handler.post(refresh); }
+    @Override protected void onPause() { handler.removeCallbacks(refresh); save(); super.onPause(); }
     @Override protected void onDestroy() { worker.shutdown(); store.close(); super.onDestroy(); }
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);

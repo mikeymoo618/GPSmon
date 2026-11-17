@@ -11,6 +11,8 @@ import android.util.Log;
 public final class MonitorReceiver extends BroadcastReceiver {
     static final String DEVICE_ADDRESS = "com.gpsmon.app.DEVICE_ADDRESS";
     @Override public void onReceive(Context context, Intent intent) {
+        if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction()) || Intent.ACTION_MY_PACKAGE_REPLACED.equals(intent.getAction()))
+            UploadScheduler.enqueue(context, false);
         if (!Settings.enabled(context)) return;
         String action = intent.getAction();
         if (!BluetoothDevice.ACTION_ACL_CONNECTED.equals(action)

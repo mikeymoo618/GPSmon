@@ -1,8 +1,22 @@
-# GPSmon 1.0.0 design
+# GPSmon 1.1.0 design
 
 ## Approved scope
 
-GPSmon automatically records road trips when selected paired Bluetooth devices connect. Precise GPS is requested every ten seconds during connected trips. Disconnection suspends GPS immediately and allows sixty seconds for reconnection. The trip ends at the original disconnection timestamp if the window expires. Trips retain coordinates, distance, timestamps, endpoint addresses and editable notes. Reitti upload is Step 2.
+GPSmon automatically records road trips when selected paired Bluetooth devices connect. Precise GPS is requested every ten seconds during connected trips. Disconnection suspends GPS immediately and allows sixty seconds for reconnection. The trip ends at the original disconnection timestamp if the window expires. Trips retain coordinates, distance, timestamps, endpoint addresses and editable notes. Approved Step 2 adds optional JSON upload after trip completion.
+
+## Reitti integration
+
+SQLite schema 2 adds nullable recording-time battery/charging fields and per-trip/per-destination upload progress. The schema-1 migration adds fields and tables in place. Earlier points retain unknown battery fields. Trip completion schedules one persisted network-constrained Android job. Saving enabled settings, manual retry, app opening, package replacement and boot restore queue processing. Monitoring and uploading have separate enabled settings.
+
+UploadEngine drains completed trips in chronological order, paging 128 points at a time. ReittiClient sends one JSON object per point using X-API-TOKEN and Content-Type application/json. Coordinates and accuracy are numeric, tst is original UTC Unix seconds, alt is metres, vel is kilometres per hour converted from Android metres per second, batt is a percentage and bs is a boolean. Unknown historical battery values are omitted. The inspected Reitti OwntracksLocationRequest conversion consumes latitude, longitude, timestamp, elevation and accuracy. Additional compatible fields are included for ingestion implementations that use them.
+
+Each successful HTTP response advances a durable timestamp checkpoint. A lost response leaves the point unacknowledged and its retry preserves the original timestamp, supporting Reitti's documented token/timestamp duplicate handling. Upload destinations have opaque IDs. Saving the same token and endpoint preserves the ID. Changing either generates a new ID, which queues local history for the new destination. Cancellation and repeated callbacks never rewind a checkpoint. Completed trips and user notes are retained after upload.
+
+Recoverable network failures, HTTP 408/429 and server 5xx request Android's exponential retry backoff. Authentication and other permanent HTTP failures show Needs attention. Disabled settings and Android job cancellation stop subsequent requests. A running connection has bounded connect/read timeouts and is disconnected on job cancellation. Job completion rechecks the durable queue to cover trips finishing during an upload. Android may defer work for network, quota or battery restrictions. Job execution performs no GPS collection.
+
+Tokens are AES-GCM encrypted with a dedicated Android Keystore key. Backups remain disabled. Settings can recover from unreadable encrypted credentials by accepting a replacement token. URLs reject embedded credentials and query strings. HTTP is allowed only for server.example.invalid by Android's network security configuration. Other destinations require HTTPS. Redirect following is disabled so the token is sent solely to the configured endpoint. Diagnostics contain generic failure details and HTTP codes, excluding token values and server bodies.
+
+Source references include Reitti's GPSLoggerIngestionApiController and OwntracksLocationRequest under https://github.com/dedicatedcode/reitti and https://www.dedicatedcode.com/projects/reitti/latest/api/ingest/ . Tests use a process-local loopback proxy for the configured hostname so synthetic requests stay on the emulator.
 
 ## Implementation decisions
 
